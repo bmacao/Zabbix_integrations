@@ -1,0 +1,33 @@
+#No userparameter config necessary
+
+#Config zabbix action to restart stats db ( memory > 50%  alarm)
+
+#RabbitMQ server(s)
+- Edit visudo and include the following line (enables to send/execute remote command):
+%zabbix ALL=(ALL) NOPASSWD: /usr/sbin/rabbitmqctl
+
+- Edit zabbix_agentd.conf
+EnableRemoteCommands=1 ( default 0 )
+
+#Zabbix Server
+- Create new action basead on trigger "Percent memory use greater than 50%"
+Configuration -> Actions -> Create action
+
+#Alter [host] for the server configured in zabbix. Ex: Rabbit1
+Conditions required:
+Type of calculation: And 
+Conditions: Problem is not suppressed
+            Trigger equals [host]: Percent memory use greater than 50%
+            Host equals [host]
+            
+Operations:
+Run remote commands on current host
+Operation Details:
+      Operation Type: Remote Command
+      Target List: Current Host
+      Type: Custom Script
+      Execute on: Zabbix agent
+      #Restart stats db without any operation output ( in a cluster environment the stats db can be moved to another node or stay in current - automated process )
+      Commands: sudo /usr/sbin/rabbitmqctl eval 'supervisor2:terminate_child(rabbit_mgmt_sup_sup, rabbit_mgmt_sup),rabbit_mgmt_sup_sup:start_child().' >/dev/null 2>&1
+     
+ Recovery operations & Update operations optional ( configure for feedback )
